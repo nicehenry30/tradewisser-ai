@@ -250,11 +250,14 @@ class OpportunitySynthesisService:
         fundamentals reduce HIGH_QUALITY to VALID.
         """
 
-        if direction == "NEUTRAL":
-            return "NO_OPPORTUNITY"
-
+        # Conflicting directional evidence is a developing opportunity,
+        # not automatically a dead market. It should be investigated
+        # on the lower timeframes before any trade decision is made.
         if agreement == "CONFLICTED":
             return "POTENTIAL"
+
+        if direction == "NEUTRAL":
+            return "NO_OPPORTUNITY"
 
         if agreement == "HIGH":
             fundamental = evidence.get(

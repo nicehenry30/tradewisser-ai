@@ -1,3 +1,5 @@
+from opentelemetry import context
+
 from app.models.ai_interpretation import AIInterpretation
 from app.models.opportunity_assessment import OpportunityAssessment
 from app.services.entry_analysis_context_service import (
@@ -65,7 +67,7 @@ def test_high_quality_opportunity_allows_entry_analysis():
     assert context.ai_next_step == "PROCEED_TO_ENTRY_ANALYSIS"
 
 
-def test_potential_opportunity_blocks_entry_analysis():
+def test_potential_opportunity_allows_lower_timeframe_investigation():
     service = EntryAnalysisContextService()
 
     context = service.build(
@@ -78,8 +80,8 @@ def test_potential_opportunity_blocks_entry_analysis():
         ),
     )
 
-    assert context.proceed_to_entry_analysis is False
-    assert context.ai_next_step == "WAIT"
+    assert context.proceed_to_entry_analysis is True
+    assert context.ai_next_step == "INVESTIGATE_LOWER_TIMEFRAME"
 
 
 def test_no_opportunity_blocks_entry_analysis():

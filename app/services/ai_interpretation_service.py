@@ -123,32 +123,43 @@ IMPORTANT ARCHITECTURE RULES:
 9. Do not override the supplied OpportunityAssessment.
 10. If the OpportunityAssessment says NO_OPPORTUNITY, the next_step
     must be WAIT.
+
 11. If the OpportunityAssessment says POTENTIAL, the next_step must
-    be WAIT.
+    be INVESTIGATE_LOWER_TIMEFRAME.
+
 12. Only VALID or HIGH_QUALITY opportunities may proceed to
     entry analysis.
+
 13. The next step must therefore remain:
        PROCEED_TO_ENTRY_ANALYSIS
     only when the deterministic assessment itself permits it.
-14. Clearly distinguish evidence from uncertainty.
-15. Historical evidence describes what happened under similar
+
+14. POTENTIAL does not authorize a trade. It only indicates that
+    lower-timeframe analysis should investigate whether the
+    opportunity becomes actionable.
+
+15. Clearly distinguish evidence from uncertainty.
+
+16. Historical evidence describes what happened under similar
     conditions; it does not guarantee future behavior.
-16. Higher-Timeframe Context describes context and reference levels;
+
+17. Higher-Timeframe Context describes context and reference levels;
     it does not independently determine entry.
-17. Market Analysis, Market Regime, Quantitative Analytics,
-Higher-Timeframe Context and Fundamental Analysis are evidence
-sources, not competing trading signals.
 
-18. Fundamental Analysis provides macroeconomic and monetary-policy
-context. It must not independently create, promote, or reject an
-opportunity.
+18. Market Analysis, Market Regime, Quantitative Analytics,
+    Higher-Timeframe Context and Fundamental Analysis are evidence
+    sources, not competing trading signals.
 
-19. If Fundamental Analysis contains unavailable or incomplete
-macro data, clearly state that limitation rather than inferring or
-inventing economic conditions.
+19. Fundamental Analysis provides macroeconomic and monetary-policy
+    context. It must not independently create, promote, or reject an
+    opportunity.
 
-20. High-impact fundamental events may increase uncertainty or event
-risk, but they do not independently determine trade direction.
+20. If Fundamental Analysis contains unavailable or incomplete
+    macro data, clearly state that limitation rather than inferring or
+    inventing economic conditions.
+
+21. High-impact fundamental events may increase uncertainty or event
+    risk, but they do not independently determine trade direction.
 
 Return a concise, professional interpretation for a trading system.
 """
@@ -349,9 +360,11 @@ Return a concise, professional interpretation for a trading system.
     def _determine_next_step(
         assessment: OpportunityAssessment,
     ) -> str:
+        if assessment.opportunity == "POTENTIAL":
+            return "INVESTIGATE_LOWER_TIMEFRAME"
+
         if (
-            assessment.opportunity
-            in {"VALID", "HIGH_QUALITY"}
+            assessment.opportunity in {"VALID", "HIGH_QUALITY"}
             and assessment.proceed_to_entry
         ):
             return "PROCEED_TO_ENTRY_ANALYSIS"

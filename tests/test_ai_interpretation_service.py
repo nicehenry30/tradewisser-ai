@@ -255,7 +255,7 @@ def test_llm_interpretation_uses_structured_output():
     assert len(llm.calls) == 1
 
 
-def test_llm_cannot_override_wait_decision():
+def test_llm_cannot_override_potential_decision():
     service = AIInterpretationService()
 
     evidence = make_evidence(
@@ -292,7 +292,7 @@ def test_llm_cannot_override_wait_decision():
         llm_service=llm,
     )
 
-    assert result.next_step == "WAIT"
+    assert result.next_step == "INVESTIGATE_LOWER_TIMEFRAME"
 
 
 def test_llm_cannot_promote_no_opportunity():

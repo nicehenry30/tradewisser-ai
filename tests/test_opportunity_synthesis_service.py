@@ -148,7 +148,7 @@ def test_bearish_majority_produces_valid_short_opportunity():
     assert result.proceed_to_entry is True
 
 
-def test_conflicting_directional_evidence_does_not_proceed_to_entry():
+def test_conflicting_directional_evidence_creates_potential_opportunity():
     service = OpportunitySynthesisService()
 
     result = service.synthesize(
@@ -161,7 +161,7 @@ def test_conflicting_directional_evidence_does_not_proceed_to_entry():
     )
 
     assert result.direction == "NEUTRAL"
-    assert result.opportunity == "NO_OPPORTUNITY"
+    assert result.opportunity == "POTENTIAL"
     assert result.agreement == "CONFLICTED"
     assert result.proceed_to_entry is False
 

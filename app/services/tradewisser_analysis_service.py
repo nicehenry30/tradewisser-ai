@@ -78,7 +78,6 @@ class TradewisserAnalysisService:
             symbol=symbol,
         )
 
-
         assessment = (
             self.evidence_service.assess_opportunity(
                 evidence
@@ -92,11 +91,27 @@ class TradewisserAnalysisService:
             )
         )
 
-        if (
-            not assessment.proceed_to_entry
-            or ai_interpretation.next_step
-            != "PROCEED_TO_ENTRY_ANALYSIS"
-        ):
+        # NO_OPPORTUNITY must stop here.
+        #
+        # POTENTIAL is different: it means the higher-timeframe
+        # evidence is conflicting but still deserves lower-timeframe
+        # investigation. It is NOT trade authorization.
+        #
+        # VALID / HIGH_QUALITY can proceed normally to entry analysis.
+        can_investigate_lower_timeframe = (
+            assessment.opportunity == "POTENTIAL"
+            and ai_interpretation.next_step
+            == "INVESTIGATE_LOWER_TIMEFRAME"
+        ) or (
+            assessment.opportunity in {
+                "VALID",
+                "HIGH_QUALITY",
+            }
+            and ai_interpretation.next_step
+            == "PROCEED_TO_ENTRY_ANALYSIS"
+        )
+
+        if not can_investigate_lower_timeframe:
             return {
                 "status": "WAIT",
                 "evidence": evidence,
