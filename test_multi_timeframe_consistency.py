@@ -50,7 +50,7 @@ def compare_candles(actual, expected):
     return differences
 
 
-def test_parent_from_30m(
+def check_parent_from_30m(
     thirty_minute_candles,
     parent_candles,
     child_count,
@@ -186,14 +186,14 @@ def main():
         f"  4H:  {len(four_hour['candles'])} candles"
     )
 
-    test_parent_from_30m(
+    check_parent_from_30m(
         thirty_minute["candles"],
         one_hour["candles"],
         child_count=2,
         parent_name="1H FROM 30M",
     )
 
-    test_parent_from_30m(
+    check_parent_from_30m(
         thirty_minute["candles"],
         four_hour["candles"],
         child_count=8,

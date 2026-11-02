@@ -1,427 +1,446 @@
-import unittest
-from app.services.structure_engine import StructureEngine
+from typing import Any
 
 from app.services.fifteen_minute_setup_service import (
     FifteenMinuteSetupService,
 )
 
 
-class FakeStructureEngine:
-
-    def __init__(self, result):
-        self.result = result
-
-    def analyze(self, candles, timeframe):
-        self.received_candles = candles
-        self.received_timeframe = timeframe
-        return self.result
-
-
-class TestFifteenMinuteSetupService(unittest.TestCase):
-
-    @staticmethod
-    def _structure(
-        current_direction,
-        events,
-    ):
-        return {
-            "timeframe": "15m",
-            "initial_direction": current_direction,
-            "current_direction": current_direction,
-            "current_state": (
-                f"established_{current_direction}"
-            ),
-            "swing_points": [],
-            "events": events,
-            "movements": [],
+class StubReversalFamilyDetector:
+    def __init__(self, candidates=None):
+        self.candidates = candidates or {
+            "bullish": [],
+            "bearish": [],
         }
 
-    @staticmethod
-    def _event(
-        index,
-        event_type,
-        direction,
+    def detect(
+        self,
+        candles: list[dict[str, Any]],
+        direction: str,
+        timeframe: str,
     ):
-        return {
-            "index": index,
-            "event_type": event_type,
-            "direction": direction,
-            "broken_price": 100.0,
-        }
-
-    def test_real_structure_engine_detects_bullish_choch_setup(self):
-        candles = [
-            {"datetime": "2026-02-01 00:00", "high": 100, "low": 95},
-            {"datetime": "2026-02-01 00:15", "high": 105, "low": 97},
-            {"datetime": "2026-02-01 00:30", "high": 102, "low": 94},
-            {"datetime": "2026-02-01 00:45", "high": 104, "low": 96},
-            {"datetime": "2026-02-01 01:00", "high": 101, "low": 93},
-            {"datetime": "2026-02-01 01:15", "high": 103, "low": 95},
-            {"datetime": "2026-02-01 01:30", "high": 99, "low": 91},
-            {"datetime": "2026-02-01 01:45", "high": 106, "low": 94},
-            {"datetime": "2026-02-01 02:00", "high": 109, "low": 97},
-            {"datetime": "2026-02-01 02:15", "high": 111, "low": 99},
-            {"datetime": "2026-02-01 02:30", "high": 113, "low": 101},
-        ]
-        service = FifteenMinuteSetupService(
-            structure_engine=StructureEngine()
-        )
-
-        result = service.analyze(
-            candles=candles,
-            higher_timeframe_context={
-                "preferred_direction": "BUY",
-            },
-        )
-
-        self.assertEqual(
-            result["structure_direction"],
-            "bearish",
-        )
-
-        self.assertEqual(
-            result["setup_type"],
-            "CHOCH",
-        )
-
-        self.assertEqual(
-            result["setup_priority"],
-            "primary",
-        )
-
-        self.assertTrue(
-            result["qualified"]
-        )
-
-        self.assertEqual(
-            result["latest_choch"]["direction"],
-            "bullish",
-        )
+        assert timeframe == "15m"
+        return self.candidates.get(direction, [])
 
 
+class StubStructureEngine:
+    def __init__(self, structure: dict[str, Any]):
+        self.structure = structure
 
-    def test_bullish_choch_is_primary_setup(self):
-        structure = self._structure(
-            "bullish",
-            [
-                self._event(
-                    10,
-                    "CHOCH",
-                    "bullish",
-                ),
-            ],
-        )
-
-        service = FifteenMinuteSetupService(
-            structure_engine=FakeStructureEngine(
-                structure
-            )
-        )
-
-        result = service.analyze(
-            candles=[],
-            higher_timeframe_context={
-                "preferred_direction": "BUY",
-            },
-        )
-
-        self.assertEqual(
-            result["alignment"],
-            "aligned",
-        )
-
-        self.assertEqual(
-            result["setup_type"],
-            "CHOCH",
-        )
-
-        self.assertEqual(
-            result["setup_priority"],
-            "primary",
-        )
-
-        self.assertTrue(
-            result["qualified"]
-        )
-
-    def test_bullish_bos_is_secondary_setup(self):
-        structure = self._structure(
-            "bullish",
-            [
-                self._event(
-                    10,
-                    "BOS",
-                    "bullish",
-                ),
-            ],
-        )
-
-        service = FifteenMinuteSetupService(
-            structure_engine=FakeStructureEngine(
-                structure
-            )
-        )
-
-        result = service.analyze(
-            candles=[],
-            higher_timeframe_context={
-                "preferred_direction": "BUY",
-            },
-        )
-
-        self.assertEqual(
-            result["setup_type"],
-            "BOS",
-        )
-
-        self.assertEqual(
-            result["setup_priority"],
-            "secondary",
-        )
-
-        self.assertTrue(
-            result["qualified"]
-        )
-
-    def test_bearish_choch_is_primary_setup(self):
-        structure = self._structure(
-            "bearish",
-            [
-                self._event(
-                    10,
-                    "CHOCH",
-                    "bearish",
-                ),
-            ],
-        )
-
-        service = FifteenMinuteSetupService(
-            structure_engine=FakeStructureEngine(
-                structure
-            )
-        )
-
-        result = service.analyze(
-            candles=[],
-            higher_timeframe_context={
-                "preferred_direction": "SELL",
-            },
-        )
-
-        self.assertEqual(
-            result["alignment"],
-            "aligned",
-        )
-
-        self.assertEqual(
-            result["setup_type"],
-            "CHOCH",
-        )
-
-        self.assertEqual(
-            result["setup_priority"],
-            "primary",
-        )
-
-        self.assertTrue(
-            result["qualified"]
-        )
-
-    def test_bearish_bos_is_secondary_setup(self):
-        structure = self._structure(
-            "bearish",
-            [
-                self._event(
-                    10,
-                    "BOS",
-                    "bearish",
-                ),
-            ],
-        )
-
-        service = FifteenMinuteSetupService(
-            structure_engine=FakeStructureEngine(
-                structure
-            )
-        )
-
-        result = service.analyze(
-            candles=[],
-            higher_timeframe_context={
-                "preferred_direction": "SELL",
-            },
-        )
-
-        self.assertEqual(
-            result["setup_type"],
-            "BOS",
-        )
-
-        self.assertEqual(
-            result["setup_priority"],
-            "secondary",
-        )
-
-        self.assertTrue(
-            result["qualified"]
-        )
-
-    def test_opposite_structure_is_not_qualified(self):
-        structure = self._structure(
-            "bearish",
-            [
-                self._event(
-                    10,
-                    "CHOCH",
-                    "bearish",
-                ),
-            ],
-        )
-
-        service = FifteenMinuteSetupService(
-            structure_engine=FakeStructureEngine(
-                structure
-            )
-        )
-
-        result = service.analyze(
-            candles=[],
-            higher_timeframe_context={
-                "preferred_direction": "BUY",
-            },
-        )
-
-        self.assertEqual(
-            result["alignment"],
-            "not_aligned",
-        )
-
-        self.assertIsNone(
-            result["setup_type"]
-        )
-
-        self.assertFalse(
-            result["qualified"]
-        )
-
-    def test_wait_htf_direction_does_not_qualify_setup(self):
-        structure = self._structure(
-            "bullish",
-            [
-                self._event(
-                    10,
-                    "CHOCH",
-                    "bullish",
-                ),
-            ],
-        )
-
-        service = FifteenMinuteSetupService(
-            structure_engine=FakeStructureEngine(
-                structure
-            )
-        )
-
-        result = service.analyze(
-            candles=[],
-            higher_timeframe_context={
-                "preferred_direction": "WAIT",
-            },
-        )
-
-        self.assertEqual(
-            result["alignment"],
-            "not_aligned",
-        )
-
-        self.assertIsNone(
-            result["setup_type"]
-        )
-
-        self.assertFalse(
-            result["qualified"]
-        )
-
-    def test_no_structure_event_waits(self):
-        structure = self._structure(
-            "bullish",
-            [],
-        )
-
-        service = FifteenMinuteSetupService(
-            structure_engine=FakeStructureEngine(
-                structure
-            )
-        )
-
-        result = service.analyze(
-            candles=[],
-            higher_timeframe_context={
-                "preferred_direction": "BUY",
-            },
-        )
-
-        self.assertEqual(
-            result["alignment"],
-            "aligned",
-        )
-
-        self.assertIsNone(
-            result["setup_type"]
-        )
-
-        self.assertIsNone(
-            result["setup_priority"]
-        )
-
-        self.assertFalse(
-            result["qualified"]
-        )
-
-    def test_choch_has_priority_when_both_events_exist(self):
-        structure = self._structure(
-            "bullish",
-            [
-                self._event(
-                    10,
-                    "CHOCH",
-                    "bullish",
-                ),
-                self._event(
-                    15,
-                    "BOS",
-                    "bullish",
-                ),
-            ],
-        )
-
-        service = FifteenMinuteSetupService(
-            structure_engine=FakeStructureEngine(
-                structure
-            )
-        )
-
-        result = service.analyze(
-            candles=[],
-            higher_timeframe_context={
-                "preferred_direction": "BUY",
-            },
-        )
-
-        self.assertEqual(
-            result["setup_type"],
-            "CHOCH",
-        )
-
-        self.assertEqual(
-            result["setup_priority"],
-            "primary",
-        )
-
-        self.assertTrue(
-            result["qualified"]
-        )
+    def analyze(
+        self,
+        candles: list[dict[str, Any]],
+        timeframe: str,
+    ) -> dict[str, Any]:
+        assert timeframe == "15m"
+        return self.structure
 
 
-if __name__ == "__main__":
-    unittest.main()
+def make_structure(
+    *,
+    current_direction: str = "bullish",
+    initial_direction: str = "bearish",
+    events: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    return {
+        "current_direction": current_direction,
+        "initial_direction": initial_direction,
+        "current_state": "test_state",
+        "events": events or [],
+    }
+
+
+def make_event(
+    event_type: str,
+    direction: str,
+    index: int,
+) -> dict[str, Any]:
+    return {
+        "event_type": event_type,
+        "direction": direction,
+        "index": index,
+    }
+
+
+def make_service(
+    structure: dict[str, Any],
+    reversal_candidates=None,
+) -> FifteenMinuteSetupService:
+    return FifteenMinuteSetupService(
+        structure_engine=StubStructureEngine(structure),
+        reversal_family_detector=StubReversalFamilyDetector(
+            reversal_candidates
+        ),
+    )
+
+
+def bullish_context() -> dict[str, Any]:
+    return {
+        "preferred_direction": "BUY",
+    }
+
+
+def bearish_context() -> dict[str, Any]:
+    return {
+        "preferred_direction": "SELL",
+    }
+
+
+def test_reversal_choch_is_qualified():
+    structure = make_structure(
+        current_direction="bullish",
+        initial_direction="bearish",
+        events=[
+            make_event("CHOCH", "bullish", 10),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert result["setup_family"] == "REVERSAL"
+    assert result["setup_type"] == "REVERSAL_CHOCH"
+    assert result["structure_pattern"] == ["CHOCH"]
+    assert result["trigger"] == "CHOCH"
+    assert result["direction"] == "bullish"
+    assert result["qualified"] is True
+    assert result["setup_stage"] == "READY_FOR_5M_CONFIRMATION"
+
+
+def test_reversal_choch_bos_is_qualified():
+    structure = make_structure(
+        current_direction="bullish",
+        initial_direction="bearish",
+        events=[
+            make_event("CHOCH", "bullish", 10),
+            make_event("BOS", "bullish", 15),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert result["setup_family"] == "REVERSAL"
+    assert result["setup_type"] == "REVERSAL_CHOCH_BOS"
+    assert result["structure_pattern"] == ["CHOCH", "BOS"]
+    assert result["trigger"] == "BOS"
+    assert result["direction"] == "bullish"
+    assert result["qualified"] is True
+    assert result["setup_stage"] == "READY_FOR_5M_CONFIRMATION"
+
+
+def test_continuation_bos_is_qualified():
+    structure = make_structure(
+        current_direction="bullish",
+        initial_direction="bullish",
+        events=[
+            make_event("BOS", "bullish", 15),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert result["setup_family"] == "CONTINUATION"
+    assert result["setup_type"] == "TREND_CONTINUATION_BOS"
+    assert result["structure_pattern"] == ["BOS"]
+    assert result["trigger"] == "BOS"
+    assert result["direction"] == "bullish"
+    assert result["qualified"] is True
+    assert result["setup_stage"] == "READY_FOR_5M_CONFIRMATION"
+
+
+def test_continuation_choch_bos_is_qualified():
+    structure = make_structure(
+        current_direction="bullish",
+        initial_direction="bullish",
+        events=[
+            make_event("CHOCH", "bullish", 10),
+            make_event("BOS", "bullish", 15),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert result["setup_family"] == "CONTINUATION"
+    assert (
+        result["setup_type"]
+        == "TREND_CONTINUATION_CHOCH_BOS"
+    )
+    assert result["structure_pattern"] == ["CHOCH", "BOS"]
+    assert result["trigger"] == "BOS"
+    assert result["direction"] == "bullish"
+    assert result["qualified"] is True
+    assert result["setup_stage"] == "READY_FOR_5M_CONFIRMATION"
+
+
+def test_generic_setup_contract_contains_required_fields():
+    structure = make_structure(
+        current_direction="bullish",
+        initial_direction="bearish",
+        events=[
+            make_event("CHOCH", "bullish", 10),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert "setup_family" in result
+    assert "setup_type" in result
+    assert "structure_pattern" in result
+    assert "trigger" in result
+    assert "direction" in result
+    assert "qualified" in result
+
+
+def test_setup_is_ready_for_5m_confirmation_when_qualified():
+    structure = make_structure(
+        current_direction="bullish",
+        initial_direction="bearish",
+        events=[
+            make_event("CHOCH", "bullish", 10),
+            make_event("BOS", "bullish", 15),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert result["qualified"] is True
+    assert result["setup_stage"] == "READY_FOR_5M_CONFIRMATION"
+    assert result["confirmation_type"] == "5M_CONFIRMATION"
+    assert result["confirmed"] is False
+
+
+def test_no_structure_event_waits():
+    structure = make_structure(
+        current_direction="bullish",
+        initial_direction="bullish",
+        events=[],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert result["setup_family"] is None
+    assert result["setup_type"] is None
+    assert result["structure_pattern"] == []
+    assert result["trigger"] is None
+    assert result["qualified"] is False
+    assert result["setup_stage"] == "WAIT"
+    assert result["confirmation_type"] is None
+    assert result["confirmed"] is False
+
+
+def test_opposite_structure_is_not_qualified():
+    structure = make_structure(
+        current_direction="bearish",
+        initial_direction="bearish",
+        events=[
+            make_event("BOS", "bearish", 15),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert result["direction"] == "neutral"
+    assert result["setup_family"] is None
+    assert result["setup_type"] is None
+    assert result["qualified"] is False
+    assert result["setup_stage"] == "WAIT"
+
+
+def test_bearish_reversal_choch_is_qualified():
+    structure = make_structure(
+        current_direction="bearish",
+        initial_direction="bullish",
+        events=[
+            make_event("CHOCH", "bearish", 10),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bearish_context(),
+    )
+
+    assert result["setup_family"] == "REVERSAL"
+    assert result["setup_type"] == "REVERSAL_CHOCH"
+    assert result["structure_pattern"] == ["CHOCH"]
+    assert result["trigger"] == "CHOCH"
+    assert result["direction"] == "bearish"
+    assert result["qualified"] is True
+
+
+def test_bearish_reversal_choch_bos_is_qualified():
+    structure = make_structure(
+        current_direction="bearish",
+        initial_direction="bullish",
+        events=[
+            make_event("CHOCH", "bearish", 10),
+            make_event("BOS", "bearish", 15),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bearish_context(),
+    )
+
+    assert result["setup_family"] == "REVERSAL"
+    assert result["setup_type"] == "REVERSAL_CHOCH_BOS"
+    assert result["structure_pattern"] == ["CHOCH", "BOS"]
+    assert result["trigger"] == "BOS"
+    assert result["direction"] == "bearish"
+    assert result["qualified"] is True
+
+
+def test_bearish_continuation_bos_is_qualified():
+    structure = make_structure(
+        current_direction="bearish",
+        initial_direction="bearish",
+        events=[
+            make_event("BOS", "bearish", 15),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bearish_context(),
+    )
+
+    assert result["setup_family"] == "CONTINUATION"
+    assert result["setup_type"] == "TREND_CONTINUATION_BOS"
+    assert result["structure_pattern"] == ["BOS"]
+    assert result["trigger"] == "BOS"
+    assert result["direction"] == "bearish"
+    assert result["qualified"] is True
+
+
+def test_bearish_continuation_choch_bos_is_qualified():
+    structure = make_structure(
+        current_direction="bearish",
+        initial_direction="bearish",
+        events=[
+            make_event("CHOCH", "bearish", 10),
+            make_event("BOS", "bearish", 15),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bearish_context(),
+    )
+
+    assert result["setup_family"] == "CONTINUATION"
+    assert (
+        result["setup_type"]
+        == "TREND_CONTINUATION_CHOCH_BOS"
+    )
+    assert result["structure_pattern"] == ["CHOCH", "BOS"]
+    assert result["trigger"] == "BOS"
+    assert result["direction"] == "bearish"
+    assert result["qualified"] is True
+
+
+def test_choch_without_bos_in_aligned_trend_is_not_qualified():
+    structure = make_structure(
+        current_direction="bullish",
+        initial_direction="bullish",
+        events=[
+            make_event("CHOCH", "bullish", 10),
+        ],
+    )
+
+    service = make_service(structure)
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert result["setup_family"] is None
+    assert result["setup_type"] is None
+    assert result["structure_pattern"] == []
+    assert result["trigger"] is None
+    assert result["direction"] == "bullish"
+    assert result["qualified"] is False
+    assert result["setup_stage"] == "WAIT"
+
+def test_reversal_family_is_exposed_in_15m_result():
+    structure = make_structure(
+        current_direction="bullish",
+        initial_direction="bearish",
+        events=[],
+    )
+
+    reversal_candidates = {
+        "bullish": [
+            {
+                "family": "repeated_level_reversal",
+                "direction": "bullish",
+                "timeframe": "15m",
+                "state": "pullback_ready",
+                "valid": True,
+                "entry_candidate": True,
+            }
+        ],
+        "bearish": [],
+    }
+
+    service = make_service(
+        structure,
+        reversal_candidates=reversal_candidates,
+    )
+
+    result = service.analyze(
+        candles=[],
+        higher_timeframe_context=bullish_context(),
+    )
+
+    assert "reversal_family" in result
+    assert result["reversal_family"]["bullish"][0]["state"] == (
+        "pullback_ready"
+    )

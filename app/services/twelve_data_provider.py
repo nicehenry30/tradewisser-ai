@@ -113,7 +113,16 @@ class TwelveDataProvider:
             timeout=15,
         )
 
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as exception:
+            if response.status_code == 429:
+                raise RuntimeError(
+                    "Twelve Data rate limit exceeded. "
+                    "Please wait before requesting more market data."
+                ) from exception
+
+            raise
 
         data = response.json()
 
