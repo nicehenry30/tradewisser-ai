@@ -9,6 +9,10 @@ from app.services.signal_decision_service import SignalDecisionService
 from app.services.signal_identity_service import SignalIdentityService
 from app.services.active_signal_registry import ActiveSignalRegistry
 
+from app.services.signal_notification_service import (
+    SignalNotificationService,
+)
+
 
 class ProactiveScanService:
     """
@@ -31,6 +35,7 @@ class ProactiveScanService:
         signal_decision_service: SignalDecisionService,
         signal_registry: ActiveSignalRegistry | None = None,
         signal_identity_service: SignalIdentityService | None = None,
+        notification_service: SignalNotificationService | None = None,
     ):
         self._scanner_service = scanner_service
         self._analysis_service = analysis_service
@@ -45,6 +50,10 @@ class ProactiveScanService:
         self._signal_identity_service = (
             signal_identity_service
             or SignalIdentityService()
+        )
+
+        self._notification_service = (
+            notification_service or SignalNotificationService()
         )
 
     def run_due_scans(
@@ -75,6 +84,12 @@ class ProactiveScanService:
 
                 signal_id = None
                 lifecycle = None
+
+                if signal_event is not None:
+                    self._notification_service.notify(
+                        signal_event,
+                        created_at=now,
+                    )
 
                 if signal_event is not None:
                     signal_id = (
