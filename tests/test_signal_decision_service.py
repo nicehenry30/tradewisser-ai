@@ -102,3 +102,61 @@ def test_rejected_analysis_does_not_create_signal():
     )
 
     assert event is None
+
+def test_confirmed_analysis_creates_confirmed_event():
+    service = SignalDecisionService()
+
+    result = {
+        "status": "WAIT",
+        "opportunity_assessment": {
+            "direction": "BUY",
+            "opportunity": "POTENTIAL",
+        },
+        "ai_interpretation": {
+            "confidence": 0.78,
+            "summary": "Lower timeframe confirmation supports the developing setup.",
+        },
+        "five_minute_confirmation": {
+            "confirmed": True,
+        },
+    }
+
+    event = service.evaluate(
+        symbol="XAUUSD",
+        analysis_result=result,
+        detected_at=datetime.now(timezone.utc),
+    )
+
+    assert isinstance(event, SignalEvent)
+    assert event.status == "CONFIRMED"
+    assert event.direction == "BUY"
+    assert event.confidence == 0.78
+    
+
+def test_potential_analysis_without_confirmation_remains_developing():
+    service = SignalDecisionService()
+
+    result = {
+        "status": "WAIT",
+        "opportunity_assessment": {
+            "direction": "BUY",
+            "opportunity": "POTENTIAL",
+        },
+        "ai_interpretation": {
+            "confidence": 0.65,
+            "summary": "Potential bullish setup.",
+        },
+        "five_minute_confirmation": {
+            "confirmed": False,
+        },
+    }
+
+    event = service.evaluate(
+        symbol="XAUUSD",
+        analysis_result=result,
+        detected_at=datetime.now(timezone.utc),
+    )
+
+    assert isinstance(event, SignalEvent)
+    assert event.status == "DEVELOPING"
+    assert event.direction == "BUY"

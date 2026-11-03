@@ -24,6 +24,7 @@ class SignalEvent:
         "WAIT",
         "POTENTIAL",
         "DEVELOPING",
+        "CONFIRMED",
         "SIGNAL",
         "AUTHORIZED",
     }

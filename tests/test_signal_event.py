@@ -49,6 +49,18 @@ def test_signal_event_accepts_developing_status():
 
     assert event.status == "DEVELOPING"
 
+def test_signal_event_accepts_confirmed_status():
+    event = SignalEvent(
+        symbol="XAUUSD",
+        direction="BUY",
+        status="CONFIRMED",
+        confidence=0.78,
+        reason="Lower timeframe confirmation supports the developing setup.",
+        detected_at=datetime.now(timezone.utc),
+    )
+
+    assert event.status == "CONFIRMED"
+
 
 def test_signal_event_rejects_invalid_direction():
     with pytest.raises(ValueError):

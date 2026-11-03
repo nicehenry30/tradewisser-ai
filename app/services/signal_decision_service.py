@@ -20,19 +20,32 @@ class SignalDecisionService:
     ) -> SignalEvent | None:
         status = analysis_result.get("status")
 
-        opportunity_assessment = analysis_result.get(
-            "opportunity_assessment"
-        ) or {}
+        opportunity_assessment = (
+            analysis_result.get("opportunity_assessment") or {}
+        )
 
-        ai_interpretation = analysis_result.get(
-            "ai_interpretation"
-        ) or {}
+        ai_interpretation = (
+            analysis_result.get("ai_interpretation") or {}
+        )
 
-        direction = opportunity_assessment.get("direction", "NEUTRAL")
-        opportunity = opportunity_assessment.get("opportunity")
+        five_minute_confirmation = (
+            analysis_result.get("five_minute_confirmation") or {}
+        )
+
+        direction = opportunity_assessment.get(
+            "direction",
+            "NEUTRAL",
+        )
+
+        opportunity = opportunity_assessment.get(
+            "opportunity"
+        )
 
         confidence = float(
-            ai_interpretation.get("confidence", 0.0)
+            ai_interpretation.get(
+                "confidence",
+                0.0,
+            )
         )
 
         reason = ai_interpretation.get(
@@ -40,7 +53,6 @@ class SignalDecisionService:
             "Tradewisser detected a market condition worth monitoring.",
         )
 
-        # A fully authorized analysis becomes a user-facing signal.
         if status == "AUTHORIZED":
             return SignalEvent(
                 symbol=symbol,
@@ -51,9 +63,24 @@ class SignalDecisionService:
                 detected_at=detected_at,
             )
 
-        # A potential opportunity is worth notifying the user about,
-        # but it is not a trade authorization.
         if opportunity == "POTENTIAL":
+            confirmed = bool(
+                five_minute_confirmation.get(
+                    "confirmed",
+                    False,
+                )
+            )
+
+            if confirmed:
+                return SignalEvent(
+                    symbol=symbol,
+                    direction=direction,
+                    status="CONFIRMED",
+                    confidence=confidence,
+                    reason=reason,
+                    detected_at=detected_at,
+                )
+
             return SignalEvent(
                 symbol=symbol,
                 direction=direction,
@@ -63,6 +90,4 @@ class SignalDecisionService:
                 detected_at=detected_at,
             )
 
-        # WAIT, RISK_REJECTED, and other non-actionable states
-        # should not generate proactive signals.
         return None
