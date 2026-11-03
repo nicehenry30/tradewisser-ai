@@ -181,6 +181,35 @@ class ActiveSignalRegistry:
 
         return updated_lifecycle
 
+    def store_lifecycle(
+        self,
+        signal_id: str,
+        lifecycle: SignalLifecycle,
+    ) -> None:
+        normalized_signal_id = signal_id.strip().upper()
+
+        entry = self._signals.get(
+            normalized_signal_id
+        )
+
+        if entry is None:
+            raise ValueError(
+                f"Signal '{normalized_signal_id}' is not registered."
+            )
+
+        signal, _ = entry
+
+        if lifecycle.signal_id != normalized_signal_id:
+            raise ValueError(
+                "Lifecycle signal ID does not match "
+                "the registered signal ID."
+            )
+
+        self._signals[normalized_signal_id] = (
+            signal,
+            lifecycle,
+        )
+
     def update_signal(
         self,
         signal_id: str,

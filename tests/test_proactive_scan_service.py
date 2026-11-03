@@ -3,11 +3,14 @@ from unittest.mock import Mock
 
 from app.models.analysis_request import AnalysisRequest
 from app.models.market_watchlist import MarketWatchlistItem
+from app.services.active_signal_registry import ActiveSignalRegistry
 from app.services.market_watchlist_service import MarketWatchlistService
 from app.services.proactive_scan_service import ProactiveScanService
-from app.services.signal_decision_service import SignalDecisionService
 from app.services.proactive_scanner_service import ProactiveScannerService
 from app.services.signal_decision_service import SignalDecisionService
+from app.services.signal_lifecycle_coordinator import (
+    SignalLifecycleCoordinator,
+)
 
 
 def build_services(items):
@@ -79,17 +82,17 @@ def test_due_instrument_is_sent_to_analysis():
     )
 
     assert results == [
-    {
-        "symbol": "XAUUSD",
-        "result": {
-            "status": "WAIT",
+        {
             "symbol": "XAUUSD",
-        },
-        "signal_event": None,
-        "signal_id": None,
-        "lifecycle": None,
-    }
-]
+            "result": {
+                "status": "WAIT",
+                "symbol": "XAUUSD",
+            },
+            "signal_event": None,
+            "signal_id": None,
+            "lifecycle": None,
+        }
+    ]
 
 
 def test_disabled_instrument_is_not_analyzed():
@@ -279,6 +282,7 @@ def test_analysis_failure_does_not_become_signal():
         results[0]["result"]["error"]
     )
 
+
 def test_signal_progression_preserves_identity():
     items = [
         MarketWatchlistItem(
@@ -369,3 +373,58 @@ def test_signal_progression_preserves_identity():
     assert third_results[0]["signal_id"] == "XAUUSD-BUY-001"
     assert third_results[0]["lifecycle"].status == "ACTIVE"
 
+
+def test_signal_lifecycle_coordinator_can_be_injected():
+    items = [
+        MarketWatchlistItem(
+            symbol="XAUUSD",
+            asset_class="metals",
+        )
+    ]
+
+    (
+        scanner_service,
+        analysis_service,
+        request_factory,
+    ) = build_services(items)
+
+    analysis_service.analyze.return_value = {
+        "status": "AUTHORIZED",
+        "opportunity_assessment": {
+            "direction": "BUY",
+            "opportunity": "VALID",
+        },
+        "ai_interpretation": {
+            "confidence": 0.91,
+            "summary": "Setup passed confirmation and risk controls.",
+        },
+    }
+
+    registry = ActiveSignalRegistry()
+
+    lifecycle_coordinator = SignalLifecycleCoordinator(
+        registry
+    )
+
+    service = ProactiveScanService(
+        scanner_service=scanner_service,
+        analysis_service=analysis_service,
+        request_factory=request_factory,
+        signal_decision_service=SignalDecisionService(),
+        signal_registry=registry,
+        lifecycle_coordinator=lifecycle_coordinator,
+    )
+
+    now = datetime(2026, 11, 3, 12, 0, 0)
+
+    results = service.run_due_scans(now)
+
+    assert results[0]["signal_id"] == "XAUUSD-BUY-001"
+    assert results[0]["lifecycle"].status == "ACTIVE"
+
+    stored_lifecycle = registry.get_lifecycle(
+        "XAUUSD-BUY-001"
+    )
+
+    assert stored_lifecycle is not None
+    assert stored_lifecycle.status == "ACTIVE"

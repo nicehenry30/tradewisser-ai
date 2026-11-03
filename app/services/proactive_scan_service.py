@@ -8,9 +8,11 @@ from app.services.proactive_scanner_service import ProactiveScannerService
 from app.services.signal_decision_service import SignalDecisionService
 from app.services.signal_identity_service import SignalIdentityService
 from app.services.active_signal_registry import ActiveSignalRegistry
-
 from app.services.signal_notification_service import (
     SignalNotificationService,
+)
+from app.services.signal_lifecycle_coordinator import (
+    SignalLifecycleCoordinator,
 )
 
 
@@ -36,6 +38,7 @@ class ProactiveScanService:
         signal_registry: ActiveSignalRegistry | None = None,
         signal_identity_service: SignalIdentityService | None = None,
         notification_service: SignalNotificationService | None = None,
+        lifecycle_coordinator: SignalLifecycleCoordinator | None = None,
     ):
         self._scanner_service = scanner_service
         self._analysis_service = analysis_service
@@ -54,6 +57,13 @@ class ProactiveScanService:
 
         self._notification_service = (
             notification_service or SignalNotificationService()
+        )
+
+        self._lifecycle_coordinator = (
+            lifecycle_coordinator
+            or SignalLifecycleCoordinator(
+                self._signal_registry
+            )
         )
 
     def run_due_scans(
@@ -162,9 +172,8 @@ class ProactiveScanService:
                 and lifecycle is not None
                 and lifecycle.status == "NEW"
             ):
-                self._signal_registry.update_lifecycle(
-                    existing_signal_id,
-                    "ACTIVE",
+                self._lifecycle_coordinator.activate(
+                    existing_signal_id
                 )
 
             return existing_signal_id
@@ -186,9 +195,8 @@ class ProactiveScanService:
         )
 
         if signal.status == "SIGNAL":
-            self._signal_registry.update_lifecycle(
-                signal_id,
-                "ACTIVE",
+            self._lifecycle_coordinator.activate(
+                signal_id
             )
 
         return signal_id
