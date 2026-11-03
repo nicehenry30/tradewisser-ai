@@ -189,9 +189,11 @@ class ProactiveScanService:
             status="NEW",
         )
 
-        self._signal_registry.register(
-            signal,
-            lifecycle,
+        self._lifecycle_coordinator.register_signal(
+            signal=signal,
+            lifecycle=lifecycle,
+            occurred_at=signal.detected_at,
+            reason="New trading signal generated.",
         )
 
         if signal.status == "SIGNAL":
