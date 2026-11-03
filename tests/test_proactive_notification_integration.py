@@ -144,3 +144,16 @@ def test_notification_failure_does_not_raise_to_analysis_layer():
     )
 
     assert notification is not None
+
+def test_confirmed_signal_generates_notification():
+    channel = RecordingChannel()
+
+    service = make_notification_service(channel)
+
+    notification = service.notify(
+        make_signal("CONFIRMED")
+    )
+
+    assert notification is not None
+    assert notification.status == "CONFIRMED"
+    assert len(channel.sent_notifications) == 1

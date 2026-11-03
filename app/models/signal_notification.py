@@ -25,6 +25,7 @@ class SignalNotification:
 
     VALID_STATUSES = {
         "DEVELOPING",
+        "CONFIRMED",
         "SIGNAL",
         "AUTHORIZED",
         "UPDATED",

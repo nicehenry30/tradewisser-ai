@@ -140,21 +140,34 @@ class ProactiveScanService:
         self,
         signal: SignalEvent,
     ) -> str:
-        existing_signal = (
-            self._signal_registry.find_active(
+        existing_signal_id = (
+            self._signal_registry.find_existing_id(
                 symbol=signal.symbol,
                 direction=signal.direction,
             )
         )
 
-        if existing_signal is not None:
-            signal_id = (
-                self._signal_identity_service.create_id(
-                    existing_signal
-                )
+        if existing_signal_id is not None:
+            self._signal_registry.update_signal(
+                existing_signal_id,
+                signal,
             )
 
-            return signal_id
+            lifecycle = self._signal_registry.get_lifecycle(
+                existing_signal_id
+            )
+
+            if (
+                signal.status == "SIGNAL"
+                and lifecycle is not None
+                and lifecycle.status == "NEW"
+            ):
+                self._signal_registry.update_lifecycle(
+                    existing_signal_id,
+                    "ACTIVE",
+                )
+
+            return existing_signal_id
 
         signal_id = (
             self._signal_identity_service.create_new_id(

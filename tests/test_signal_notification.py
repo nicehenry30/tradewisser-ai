@@ -86,3 +86,17 @@ def test_notification_is_immutable():
 
     with pytest.raises(Exception):
         notification.status = "SIGNAL"
+
+def test_signal_notification_accepts_confirmed_status():
+    notification = SignalNotification(
+        signal_id="XAUUSD-BUY-001",
+        symbol="XAUUSD",
+        direction="BUY",
+        status="CONFIRMED",
+        confidence=0.85,
+        title="XAUUSD BUY setup confirmed",
+        message="Lower timeframe confirmation supports the setup.",
+        created_at=datetime(2026, 11, 3, 12, 0),
+    )
+
+    assert notification.status == "CONFIRMED"

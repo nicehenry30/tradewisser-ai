@@ -204,3 +204,18 @@ def test_duplicate_notify_with_result_is_suppressed():
     assert second_result is None
 
     assert len(channel.sent_notifications) == 1
+
+def test_confirmed_signal_generates_notification():
+    service, channel = make_service()
+
+    signal = make_signal(
+        status="CONFIRMED"
+    )
+
+    notification = service.notify(signal)
+
+    assert notification is not None
+    assert notification.status == "CONFIRMED"
+    assert "setup confirmed" in notification.title.lower()
+
+    assert len(channel.sent_notifications) == 1

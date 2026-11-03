@@ -12,6 +12,7 @@ class NotificationPolicy:
 
     NOTIFIABLE_STATUSES = {
         "DEVELOPING",
+        "CONFIRMED",
         "SIGNAL",
         "AUTHORIZED",
     }

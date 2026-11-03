@@ -134,3 +134,81 @@ def test_duplicate_signal_id_is_rejected():
 
     with pytest.raises(ValueError):
         registry.register(signal, lifecycle)
+
+def test_non_expired_signal_can_be_found_by_market():
+    registry = ActiveSignalRegistry()
+
+    signal = make_signal(
+        status="DEVELOPING",
+    )
+    lifecycle = make_lifecycle(
+        status="NEW",
+    )
+
+    registry.register(
+        signal,
+        lifecycle,
+    )
+
+    result = registry.find_existing(
+        symbol="XAUUSD",
+        direction="BUY",
+    )
+
+    assert result is signal
+
+
+def test_expired_signal_is_not_found_as_existing():
+    registry = ActiveSignalRegistry()
+
+    signal = make_signal(
+        status="SIGNAL",
+    )
+    lifecycle = make_lifecycle(
+        status="EXPIRED",
+    )
+
+    registry.register(
+        signal,
+        lifecycle,
+    )
+
+    result = registry.find_existing(
+        symbol="XAUUSD",
+        direction="BUY",
+    )
+
+    assert result is None
+
+
+def test_signal_event_can_be_updated():
+    registry = ActiveSignalRegistry()
+
+    developing_signal = make_signal(
+        status="DEVELOPING",
+    )
+
+    lifecycle = make_lifecycle(
+        status="NEW",
+    )
+
+    registry.register(
+        developing_signal,
+        lifecycle,
+    )
+
+    confirmed_signal = make_signal(
+        status="CONFIRMED",
+    )
+
+    registry.update_signal(
+        "XAUUSD-BUY-001",
+        confirmed_signal,
+    )
+
+    result = registry.get(
+        "XAUUSD-BUY-001",
+    )
+
+    assert result is confirmed_signal
+    assert result.status == "CONFIRMED"

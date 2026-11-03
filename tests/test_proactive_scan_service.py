@@ -279,3 +279,93 @@ def test_analysis_failure_does_not_become_signal():
         results[0]["result"]["error"]
     )
 
+def test_signal_progression_preserves_identity():
+    items = [
+        MarketWatchlistItem(
+            symbol="XAUUSD",
+            asset_class="metals",
+            scan_interval_seconds=1,
+        )
+    ]
+
+    (
+        scanner_service,
+        analysis_service,
+        request_factory,
+    ) = build_services(items)
+
+    analysis_results = [
+        {
+            "status": "WAIT",
+            "opportunity_assessment": {
+                "direction": "BUY",
+                "opportunity": "POTENTIAL",
+            },
+            "ai_interpretation": {
+                "confidence": 0.65,
+                "summary": "Bullish opportunity developing.",
+            },
+            "five_minute_confirmation": {
+                "confirmed": False,
+            },
+        },
+        {
+            "status": "WAIT",
+            "opportunity_assessment": {
+                "direction": "BUY",
+                "opportunity": "POTENTIAL",
+            },
+            "ai_interpretation": {
+                "confidence": 0.78,
+                "summary": "Lower timeframe confirmation supports the setup.",
+            },
+            "five_minute_confirmation": {
+                "confirmed": True,
+            },
+        },
+        {
+            "status": "AUTHORIZED",
+            "opportunity_assessment": {
+                "direction": "BUY",
+                "opportunity": "VALID",
+            },
+            "ai_interpretation": {
+                "confidence": 0.91,
+                "summary": "Setup passed confirmation and risk controls.",
+            },
+        },
+    ]
+
+    analysis_service.analyze.side_effect = analysis_results
+
+    service = ProactiveScanService(
+        scanner_service=scanner_service,
+        analysis_service=analysis_service,
+        request_factory=request_factory,
+        signal_decision_service=SignalDecisionService(),
+    )
+
+    first_scan = datetime(2026, 11, 3, 12, 0, 0)
+
+    first_results = service.run_due_scans(first_scan)
+
+    assert first_results[0]["signal_event"].status == "DEVELOPING"
+    assert first_results[0]["signal_id"] == "XAUUSD-BUY-001"
+    assert first_results[0]["lifecycle"].status == "NEW"
+
+    second_scan = first_scan + timedelta(seconds=1)
+
+    second_results = service.run_due_scans(second_scan)
+
+    assert second_results[0]["signal_event"].status == "CONFIRMED"
+    assert second_results[0]["signal_id"] == "XAUUSD-BUY-001"
+    assert second_results[0]["lifecycle"].status == "NEW"
+
+    third_scan = second_scan + timedelta(seconds=1)
+
+    third_results = service.run_due_scans(third_scan)
+
+    assert third_results[0]["signal_event"].status == "SIGNAL"
+    assert third_results[0]["signal_id"] == "XAUUSD-BUY-001"
+    assert third_results[0]["lifecycle"].status == "ACTIVE"
+

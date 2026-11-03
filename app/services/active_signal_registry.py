@@ -109,6 +109,46 @@ class ActiveSignalRegistry:
 
         return None
 
+    def find_existing(
+        self,
+        symbol: str,
+        direction: str,
+    ) -> SignalEvent | None:
+        normalized_symbol = symbol.strip().upper()
+        normalized_direction = direction.strip().upper()
+
+        for signal, lifecycle in self._signals.values():
+            if lifecycle.status == "EXPIRED":
+                continue
+
+            if (
+                signal.symbol == normalized_symbol
+                and signal.direction == normalized_direction
+            ):
+                return signal
+
+        return None
+
+    def find_existing_id(
+        self,
+        symbol: str,
+        direction: str,
+    ) -> str | None:
+        normalized_symbol = symbol.strip().upper()
+        normalized_direction = direction.strip().upper()
+
+        for signal_id, (signal, lifecycle) in self._signals.items():
+            if lifecycle.status == "EXPIRED":
+                continue
+
+            if (
+                signal.symbol == normalized_symbol
+                and signal.direction == normalized_direction
+            ):
+                return signal_id
+
+        return None
+
     def update_lifecycle(
         self,
         signal_id: str,
@@ -140,6 +180,33 @@ class ActiveSignalRegistry:
         )
 
         return updated_lifecycle
+
+    def update_signal(
+        self,
+        signal_id: str,
+        signal: SignalEvent,
+    ) -> None:
+        normalized_signal_id = signal_id.strip().upper()
+
+        entry = self._signals.get(normalized_signal_id)
+
+        if entry is None:
+            raise ValueError(
+                f"Signal '{normalized_signal_id}' is not registered."
+            )
+
+        _, lifecycle = entry
+
+        if lifecycle.status == "EXPIRED":
+            raise ValueError(
+                f"Cannot update expired signal "
+                f"'{normalized_signal_id}'."
+            )
+
+        self._signals[normalized_signal_id] = (
+            signal,
+            lifecycle,
+        )
 
     def remove(
         self,

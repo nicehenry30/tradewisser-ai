@@ -155,6 +155,12 @@ class SignalNotificationService:
                 f"{signal.direction} opportunity developing"
             )
 
+        if signal.status == "CONFIRMED":
+            return (
+                f"{signal.symbol} "
+                f"{signal.direction} setup confirmed"
+            )
+
         if signal.status == "SIGNAL":
             return (
                 f"{signal.symbol} "
